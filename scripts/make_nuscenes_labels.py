@@ -15,6 +15,10 @@ from src.utils.configs import get_default_configuration
 from src.data.utils import get_visible_mask, get_occlusion_mask, transform, \
     encode_binary_labels
 import src.data.nuscenes.utils as nusc_utils
+# import src.data.nuscenes.utils as funs
+import pdb
+import matplotlib.pyplot as plt
+
 
 
 def process_scene(nuscenes, map_data, scene, config):
@@ -48,17 +52,24 @@ def process_sample(nuscenes, map_data, sample, config):
 def process_sample_data(nuscenes, map_data, sample_data, lidar, config):
 
     # Render static road geometry masks
+    #!
+    pdb.set_trace()
     map_masks = nusc_utils.get_map_masks(nuscenes, 
                                          map_data, 
                                          sample_data, 
                                          config.map_extents, 
                                          config.map_resolution)
+    #(4,196,200)
+    pdb.set_trace()
     
     # Render dynamic object masks
     obj_masks = nusc_utils.get_object_masks(nuscenes, 
                                             sample_data, 
                                             config.map_extents, 
                                             config.map_resolution)
+    #(11,196,200)
+    pdb.set_trace()
+    
     masks = np.concatenate([map_masks, obj_masks], axis=0)
 
     # Ignore regions of the BEV which are outside the image
@@ -67,15 +78,18 @@ def process_sample_data(nuscenes, map_data, sample_data, lidar, config):
     intrinsics = np.array(sensor['camera_intrinsic'])
     masks[-1] |= ~get_visible_mask(intrinsics, sample_data['width'], 
                                    config.map_extents, config.map_resolution)
+    pdb.set_trace()
     
     # Transform lidar points into camera coordinates
     cam_transform = nusc_utils.get_sensor_transform(nuscenes, sample_data)
     cam_points = transform(np.linalg.inv(cam_transform), lidar)
     masks[-1] |= get_occlusion_mask(cam_points, config.map_extents,
                                     config.map_resolution)
+    pdb.set_trace()
     
     # Encode masks as integer bitmask
     labels = encode_binary_labels(masks)
+    pdb.set_trace()
 
     # Save outputs to disk
     output_path = os.path.join(os.path.expandvars(config.label_root),
@@ -135,7 +149,6 @@ if __name__ == '__main__':
     # Preload NuScenes map data
     map_data = { location : load_map_data(dataroot, location) 
                  for location in nusc_utils.LOCATIONS }
-    
     # Create a directory for the generated labels
     output_root = os.path.expandvars(config.label_root)
     os.makedirs(output_root, exist_ok=True)
@@ -143,11 +156,12 @@ if __name__ == '__main__':
    # print(nuscenes.scene)
     # Iterate over NuScene scenes
     print("\nGenerating labels...")
+    count = 0
     for scene in tqdm(nuscenes.scene):
+        if count > 85:
+            break
         process_scene(nuscenes, map_data, scene, config)
-
-
-
+        count +=1
 
     
 

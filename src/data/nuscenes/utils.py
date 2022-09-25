@@ -1,4 +1,5 @@
 import os
+import pdb
 import numpy as np
 from shapely import geometry, affinity
 from pyquaternion import Quaternion
@@ -6,8 +7,9 @@ from pyquaternion import Quaternion
 from nuscenes.eval.detection.utils import category_to_detection_name
 from nuscenes.eval.detection.constants import DETECTION_NAMES
 from nuscenes.utils.data_classes import LidarPointCloud
-
-from ..utils import transform_polygon, render_polygon, transform
+import matplotlib.pyplot as plt
+fig,ax = plt.subplots(figsize=(10,10))
+from ..utils import transform_polygon, render_polygon_custom, render_polygon, transform
 
 CAMERA_NAMES = ['CAM_FRONT', 'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT', 
                 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT', 'CAM_BACK']
@@ -58,14 +60,25 @@ def get_layer_mask(nuscenes, polygons, sample_data, extents, resolution):
 
     # Find all polygons which intersect with the area of interest
     for polygon in polygons.query(map_patch):
-
+        print(len(polygons.query(map_patch)))
         polygon = polygon.intersection(map_patch)
         
-        # Transform into map coordinates
-        polygon = transform_polygon(polygon, inv_tfm)
+        # Transform into map coordinates                                                                                       polygon = transform_polygon(polygon, inv_tfm)
 
         # Render the polygon to the mask
-        render_shapely_polygon(mask, polygon, extents, resolution)
+        render_shapely_polygon(mask, polygon, extents, resolution, map_patch.exterior.coords, tfm)
+        
+        # fig,ax = plt.subplots(figsize=(10,10))
+        # tmp1 = list(polygons.query(map_patch)[0].exterior.coords)
+        # tmp2 = list(map_patch.exterior.coords)
+        # tmp3 = list(polygon.exterior.coords)
+        # ax.plot(*zip(*tmp1))
+        # ax.plot(*zip(*tmp2))
+        # ax.plot(*zip(*tmp3))
+        # plt.show()
+        
+        # pdb.set_trace()
+        
     
     return mask.astype(np.bool)
 
@@ -106,15 +119,14 @@ def get_object_masks(nuscenes, sample_data, extents, resolution):
 def get_sensor_transform(nuscenes, sample_data):
 
     # Load sensor transform data
-    sensor = nuscenes.get(
-        'calibrated_sensor', sample_data['calibrated_sensor_token'])
+    sensor = nuscenes.get('calibrated_sensor', sample_data['calibrated_sensor_token'])
     sensor_tfm = make_transform_matrix(sensor)
 
     # Load ego pose data
     pose = nuscenes.get('ego_pose', sample_data['ego_pose_token'])
     pose_tfm = make_transform_matrix(pose)
 
-    return np.dot(pose_tfm, sensor_tfm)
+    return np.dot(pose_tfm, sensor_tfm) #! here error may exist # inv(pose) dot sensor
 
 
 def load_point_cloud(nuscenes, sample_data):
@@ -135,7 +147,7 @@ def make_transform_matrix(record):
     return transform
 
 
-def render_shapely_polygon(mask, polygon, extents, resolution):
+def render_shapely_polygon(mask, polygon, extents, resolution, patch_coords,tfm):
 
     if polygon.geom_type == 'Polygon':
 
@@ -144,12 +156,14 @@ def render_shapely_polygon(mask, polygon, extents, resolution):
 
         # Render interiors
         for hole in polygon.interiors:
-            render_polygon(mask, hole.coords, extents, resolution, 0)
+            # render_polygon(mask, hole.coords, extents, resolution, tfm, 0)
+            render_polygon_custom(mask, hole.coords, extents, resolution, tfm, 0)
     
     # Handle the case of compound shapes
     else:
+        pdb.set_trace()
         for poly in polygon:
-            render_shapely_polygon(mask, poly, extents, resolution)
+            render_shapely_polygon(mask, poly, extents, resolution, patch_coords,tfm)
 
 
 

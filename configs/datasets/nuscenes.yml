@@ -1,7 +1,8 @@
 train_dataset: nuscenes
-dataroot: ${DATA_ROOT}/nuscenes
+dataroot: /home/ziyan/datasets/nuscenes
 nuscenes_version: v1.0-trainval
-label_root: ${PROCESSED_ROOT}/nuscenes/map-labels-v1.2
+# nuscenes_version: v1.0-trainval01_blobs_camera
+label_root: /home/ziyan/mono-semantic-maps/label/nuscenes/map-labels-v1.2
 img_size: [800, 600]
 num_class: 14
 class_weights:

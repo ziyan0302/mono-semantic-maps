@@ -1,7 +1,11 @@
 import cv2
 import numpy as np
 import torch
-from shapely import affinity
+from shapely import affinity, geometry
+from shapely.geometry import Polygon
+import pdb
+import matplotlib.pyplot as plt
+
 
 def decode_binary_labels(labels, nclass):
     bits = torch.pow(2, torch.arange(nclass))
@@ -28,10 +32,32 @@ def transform_polygon(polygon, affine):
 
 
 def render_polygon(mask, polygon, extents, resolution, value=1):
+
+
     if len(polygon) == 0:
         return
     polygon = (polygon - np.array(extents[:2])) / resolution
     polygon = np.ascontiguousarray(polygon).round().astype(np.int32)
+    cv2.fillConvexPoly(mask, polygon, value)
+    
+def render_polygon_custom(mask, polygon, extents, resolution, tfm, value=1):
+    inv_tfm = np.linalg.inv(tfm)
+    poly = polygon
+    # transform the polygon in global(map) coordinate to camera(bev) coordinate
+    # pdb.set_trace()
+    poly_bev = transform_polygon(Polygon(poly), inv_tfm)
+    
+    # map_patch = geometry.box(*extents)
+    # pat_lb = list(patch_coords)[3]
+    if len(polygon) == 0:
+        return
+    # pdb.set_trace()
+    # polygon = (polygon - np.array(extents[:2])) / resolution
+    # polygon = (polygon - np.array(pat_lb)) / resolution
+    poly_w = (poly_bev.exterior.coords - np.array(extents[:2])) / resolution
+    # polygon = np.ascontiguousarray(polygon).round().astype(np.int32)
+    polygon = np.ascontiguousarray(poly_w).round().astype(np.int32)
+    # pdb.set_trace()
     cv2.fillConvexPoly(mask, polygon, value)
 
 
